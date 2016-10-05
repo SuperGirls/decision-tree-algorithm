@@ -119,6 +119,10 @@ public class MyWeka {
         classifier.buildClassifier(train);
     }
     
+    public void buildClassifierMyID3() throws Exception{
+        classifier = new MyID3();
+        classifier.buildClassifier(train);
+    }
     
     public void evaluateModel() throws Exception{
         eval = new Evaluation(train);
@@ -259,15 +263,23 @@ public class MyWeka {
         int option = input.nextInt();
         input.nextLine();
         
-        if(option == 1) {
-            optCls = 1;
-        } else if(option == 2) {
-            System.out.print("Masukkan nilai confidence: ");
-            confidence = input.nextLine();
-            optCls = 2;
-        } else if (option == 3) {
-            optCls =  3;
-        }   
+        switch (option) {
+            case 1: 
+                optCls = 1;
+                break;
+            case 2: 
+                System.out.print("Masukkan nilai confidence: ");
+                confidence = input.nextLine();
+                optCls = 2;
+                break;
+            case 3: 
+                optCls = 3;
+                break;
+            case 4: 
+                optCls = 4;
+                break;
+        }
+
     }
     
     public void chooseTestOption(){
@@ -321,18 +333,20 @@ public class MyWeka {
             buildClassifierJ48(confidence);
         } else if(optCls == 3) {
             buildClassifierNaiveBayes();
+        } else if(optCls == 4) {
+            buildClassifierMyID3();
         }
         
-        if(optTest == 2){
+        /*if(optTest == 2){
             crossValidate(folds);
         } else {
             evaluateModel();
-        }  
+        }  */
         
         //Print Result
-        System.out.println(eval.toSummaryString("\nSummary\n======\n", false));   
+        /*System.out.println(eval.toSummaryString("\nSummary\n======\n", false));   
         System.out.println(eval.toClassDetailsString("\nStatistic\n======\n"));
-        System.out.println(eval.toMatrixString("\nConfusion Matrix\n======\n"));
+        System.out.println(eval.toMatrixString("\nConfusion Matrix\n======\n"));*/
         
     }
     
@@ -359,6 +373,8 @@ public class MyWeka {
             buildClassifierJ48(confidence);
         } else if(optCls == 3) {
             buildClassifierNaiveBayes();
+        } else if(optCls == 4) {
+            buildClassifierMyID3();
         }
         
         String[] attributes = in.split(" ");
