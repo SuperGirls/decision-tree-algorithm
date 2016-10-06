@@ -128,6 +128,11 @@ public class MyWeka {
         //System.out.println(classifier);
     }
     
+    public void buildClassifierMyC45() throws Exception{
+        classifier = new MyC45();
+        classifier.buildClassifier(train);
+    }
+    
     public void evaluateModel() throws Exception{
         eval = new Evaluation(train);
         eval.evaluateModel(classifier, test); 
@@ -272,6 +277,7 @@ public class MyWeka {
         System.out.println("2. C4.5");
         System.out.println("3. Naive Bayes");
         System.out.println("4. My ID3");
+        System.out.println("5. My C45");
         System.out.print("Pilihan opsi: ");
         
         int option = input.nextInt();
@@ -291,6 +297,9 @@ public class MyWeka {
                 break;
             case 4: 
                 optCls = 4;
+                break;
+            case 5: 
+                optCls = 5;
                 break;
         }
 
@@ -349,6 +358,8 @@ public class MyWeka {
             buildClassifierNaiveBayes();
         } else if(optCls == 4) {
             buildClassifierMyID3();
+        } else if(optCls == 5) {
+            buildClassifierMyC45();
         }
         
         if(optTest == 2){
@@ -389,6 +400,8 @@ public class MyWeka {
             buildClassifierNaiveBayes();
         } else if(optCls == 4) {
             buildClassifierMyID3();
+        } else if(optCls == 5) {
+            buildClassifierMyC45();
         }
         
         String[] attributes = in.split(" ");

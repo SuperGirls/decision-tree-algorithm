@@ -5,10 +5,26 @@
  */
 package decisiontreeclassifier;
 
+import weka.classifiers.Classifier;
+import weka.core.Instances;
+
 /**
  *
  * @author TOSHIBA PC
  */
-public class MyC45 {
+public class MyC45 extends Classifier {
     
+    protected C45Tree root;
+    
+    public MyC45() {
+        
+    }
+    
+    @Override
+    public void buildClassifier(Instances data) {
+        root = new C45Tree();
+        root.makeTree(data);
+//        root.prune();
+    }
+
 }
