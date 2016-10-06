@@ -6,13 +6,12 @@
 package decisiontreeclassifier;
 
 import java.util.ArrayList;
-import weka.classifiers.Classifier;
+import java.util.HashMap;
+import java.util.Map;
 import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
-import weka.filters.Filter;
-import weka.filters.unsupervised.attribute.Remove;
 
 /**
  *
@@ -67,7 +66,7 @@ public class C45Tree {
         return data.attribute(bestAttributeIndex);
     }
     
-    public double classifyInstance (Instance instance) throws Exception {
+    public double classifyInstance (Instance instance) {
         ArrayList<Attribute> usedAttributes = new ArrayList<Attribute>();
         return recursiveClassifyInstance (instance, usedAttributes);
     }
@@ -268,7 +267,7 @@ public class C45Tree {
         return splitData;
     }
 
-    private double calculateSplitPoint (Instances data, Attribute att) {
+    public double calculateSplitPoint (Instances data, Attribute att) {
         Instances localData = data;
         localData.sort(att);
         int idxSplit = -1;
@@ -287,5 +286,71 @@ public class C45Tree {
         }
         
         return Double.parseDouble(localData.instance(idxSplit).stringValue(att));
+    }
+
+    public void prune (Instances data) {
+        if (m_Attribute != null) {
+            // Prune all subtree
+            Instances[] splitData = splitData(data, m_Attribute);
+            for (int i=0; i<m_Successors.length; i++) {
+                m_Successors[i].prune(splitData[i]);
+            }
+            
+            // Calculate error in this subtree
+            double errorBefore = errorBeforePruning(data);
+            
+            // Calculate error if this is a leaf
+            double errorAfter = errorAfterPruning(data);
+            
+            if (errorAfter < errorBefore) {
+                // Make this node a leaf
+                m_Successors = null;
+                m_Attribute = null;
+                m_Distribution = new double[data.numClasses()];
+
+                for (int i = 0; i < data.numInstances(); i++) {
+                    m_Distribution[(int) data.instance(i).classValue()]++;
+                }
+
+                Utils.normalize(m_Distribution);
+                m_ClassValue = Utils.maxIndex(m_Distribution);
+                m_ClassAttribute = data.classAttribute();
+            }
+        }
+    }
+    
+    public double errorBeforePruning(Instances data) {
+        int error = 0;
+        
+        // Count error
+        for (int i=0; i<data.numInstances(); i++) {
+            double classResult = classifyInstance(data.instance(i));
+            if (data.instance(i).classValue() != classResult) {
+                error++;
+            }
+        }
+        
+        return error/data.numInstances();
+    }
+    
+    public double errorAfterPruning(Instances data) {
+        // Count error
+        Map<Double,Integer> classes = new HashMap<>();
+        for (int i = 0; i < data.numInstances(); i++) {
+            if(!classes.containsKey(data.instance(i).classValue())) {
+                classes.put(data.instance(i).classValue(),1);
+            }
+            else {
+                int temp = classes.get(data.instance(i).classValue()) + 1;
+                classes.put(data.instance(i).classValue(),temp);
+            }
+        }
+        int max = 0;
+        for (int i = 0; i < classes.size(); i++) {
+            if (classes.get(i) > max)
+                max = classes.get(i);
+        }
+        
+        return (data.numInstances() - max)/data.numInstances();
     }
 }
