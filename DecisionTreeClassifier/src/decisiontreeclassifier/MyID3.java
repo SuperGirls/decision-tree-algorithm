@@ -10,6 +10,8 @@ import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
+import weka.filters.Filter;
+import weka.filters.unsupervised.attribute.Remove;
 
 /**
  *
@@ -68,12 +70,9 @@ public class MyID3 extends Classifier {
     public Attribute bestAttribute (Instances data) {
         double[] informationGain = calculateInformationGain(data);
         int bestAttributeIndex = -1;
-        System.out.println("information gains: ");
-        //for (int i = 0; i < informationG)
         double highestInformationGain = 0;
         for (int i = 0; i < informationGain.length; i++) {
-            System.out.println(informationGain[i]);
-            if (informationGain[i] >= highestInformationGain) {
+            if (i != data.classIndex() && informationGain[i] >= highestInformationGain) {
                 bestAttributeIndex = i;
                 highestInformationGain = informationGain[i];
             }
@@ -93,12 +92,17 @@ public class MyID3 extends Classifier {
     
     public double computeProbability (Instances data, int classValue, Attribute att, int attributeValueIndex) {
         Instances[] splitData = splitData(data, att);
+        if (splitData[attributeValueIndex].numInstances() == 0) {
+            return 0;
+        }
+        
         int numInstancesWithCorrespondingClass = 0;
         for (int i = 0; i < splitData[attributeValueIndex].numInstances(); i++) {
             if (splitData[attributeValueIndex].instance(i).classValue() == classValue) {
                 numInstancesWithCorrespondingClass++;
             }
         }
+        
         return (double) numInstancesWithCorrespondingClass / splitData[attributeValueIndex].numInstances();
     }
     
@@ -106,7 +110,8 @@ public class MyID3 extends Classifier {
         double entropy = 0;
         for (int i = 0; i < data.numClasses(); i++) {
             double probability = computeProbability(data, i);
-            entropy += -1 * probability * Utils.log2(probability);
+            
+            entropy += -1 * probability * ((probability > 0) ? Utils.log2(probability) : 0 );
         }
         return entropy;
     }
@@ -138,10 +143,9 @@ public class MyID3 extends Classifier {
     }
     
     public void makeTree (Instances data) {
-        //System.out.println("make Tree with this data " + data);
         // If number of predicting attributes is empty, then Return the single node tree Root,
         // with label = most common value of the target attribute in the examples.
-        if (data.numAttributes() == 0) {
+        if (data.numAttributes() <= 1) {
             // TODO: return the single node tree Root
             m_Attribute = null;
             m_Distribution = new double[data.numClasses()];
@@ -153,14 +157,12 @@ public class MyID3 extends Classifier {
             Utils.normalize(m_Distribution);
             m_ClassValue = Utils.maxIndex(m_Distribution);
             m_ClassAttribute = data.classAttribute();
-            System.out.println("[1] numAttributes = 0: ");
             return;
         }
                 
         // Else if all examples' classes are classValue, Return the single-node tree Root, with label = classValue.
         int classValue = allExamplesClassValue(data);
         if (classValue > -1) {
-            System.out.println("[2] all examples are classValue");
             m_Attribute = null;
             m_Distribution = new double[data.numClasses()];
             
@@ -171,17 +173,14 @@ public class MyID3 extends Classifier {
             Utils.normalize(m_Distribution);
             m_ClassValue = Utils.maxIndex(m_Distribution);
             m_ClassAttribute = data.classAttribute();
-            //System.out.println("[2] all examples are classValue: " + this);
             return;
         }
         
         // Otherwise
-        System.out.println("[?] otherwise");
         m_Attribute = bestAttribute(data);
         Instances[] splitData = splitData(data, m_Attribute);
         for (int i = 0; i < splitData.length; i++) {
             if (splitData[i].numInstances() == 0) {
-                System.out.println("[3] instance habis");
                 // Below this new branch add a leaf node with label = most common target value in the examples
                 m_Attribute = null;
                 m_Distribution = new double[data.numClasses()];
@@ -193,16 +192,21 @@ public class MyID3 extends Classifier {
                 Utils.normalize(m_Distribution);
                 m_ClassValue = Utils.maxIndex(m_Distribution);
                 m_ClassAttribute = data.classAttribute();
-                //System.out.println("[3] numInstances = 0: " + this);
                 return;
                 
             } else {
                 // create successors
-                System.out.println("[4] create successors: ");
                 m_Successors = new MyID3[m_Attribute.numValues()];
                 for (int j = 0; j < m_Attribute.numValues(); j++) {
                     m_Successors[j] = new MyID3();
-                    m_Successors[j].makeTree(splitData[j]);
+                    Instances newData = new Instances (splitData[j]);
+                    for (int k = 0; k < newData.numAttributes(); k++) {
+                        if (newData.attribute(k).equals(m_Attribute)) {
+                            newData.deleteAttributeAt(k);
+                        }
+                    }
+                   
+                    m_Successors[j].makeTree(newData);
                 }
             }
         }
@@ -276,9 +280,9 @@ public class MyID3 extends Classifier {
 
         if (m_Attribute == null) {
             if (Instance.isMissingValue(m_ClassValue)) {
-              text.append(": null");
+                text.append(": null");
             } else {
-              text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
+                text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
             } 
         } else {
             for (int j = 0; j < m_Attribute.numValues(); j++) {
