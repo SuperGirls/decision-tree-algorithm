@@ -48,6 +48,8 @@ public class Main {
                 System.out.print("Masukkan Nama File : ");
                 String filename = input.nextLine();
                 myWeka.loadModel(filename);
+            } else if(option == 10) {
+                myWeka.printTrainingData();
             }
             
             myWeka.printMainMenu();     

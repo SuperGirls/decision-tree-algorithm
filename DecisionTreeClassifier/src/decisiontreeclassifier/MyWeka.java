@@ -99,6 +99,8 @@ public class MyWeka {
     public void buildClassifierID3() throws Exception{
         classifier = new Id3();
         classifier.buildClassifier(train);
+        System.out.println("This is the ID3 classifier");
+        System.out.println(classifier);
     }
     
     public void buildClassifierJ48(String confidence) throws Exception {
@@ -122,6 +124,8 @@ public class MyWeka {
     public void buildClassifierMyID3() throws Exception{
         classifier = new MyID3();
         classifier.buildClassifier(train);
+        System.out.println("This is the My ID3 classifier");
+        System.out.println(classifier);
     }
     
     public void evaluateModel() throws Exception{
@@ -197,6 +201,14 @@ public class MyWeka {
         System.out.println(data.toSummaryString());
     }
     
+    public void printTrainingData () {
+        for (int i=0; i < data.numInstances(); i++) {
+            System.out.print(i);
+            System.out.print(": ");
+            System.out.println(data.instance(i));
+        }
+    }
+    
     //****************** Menuuu ******************//
     
     public void printMainMenu(){
@@ -211,6 +223,7 @@ public class MyWeka {
         System.out.println("7. Print Data Summary");
         System.out.println("8. Save Model");
         System.out.println("9. Load Model");
+        System.out.println("10. Show Training Data");
     }
     
     public void inputDataTrain() throws IOException, Exception{
@@ -258,6 +271,7 @@ public class MyWeka {
         System.out.println("1. ID3");
         System.out.println("2. C4.5");
         System.out.println("3. Naive Bayes");
+        System.out.println("4. My ID3");
         System.out.print("Pilihan opsi: ");
         
         int option = input.nextInt();

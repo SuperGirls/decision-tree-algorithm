@@ -7,6 +7,7 @@ package decisiontreeclassifier;
 
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
+import weka.core.Instance;
 import weka.core.Instances;
 import weka.core.Utils;
 
@@ -27,38 +28,34 @@ public class MyID3 extends Classifier {
     }
     
     public void buildClassifier (Instances data) throws Exception {
-        testCapability(data);
+        try {
+            testCapability(data);
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+            return;
+        }
         
         data = new Instances(data);
         data.deleteWithMissingClass();
-        
-        // todo dihapus
-        System.out.println("Number of Instances: " + data.numInstances());
-
-        for (int i=0; i < data.numInstances(); i++) {
-            System.out.print(i);
-            System.out.print(": ");
-            System.out.println(data.instance(i));
-        }
-        //sampai sini
         
         makeTree(data);
         
     }
     
-    public int allExamplesClassIndex (Instances data) {
-        // Count how many examples have class X, for each class X
+    public int allExamplesClassValue (Instances data) {
+        // Count how many examples have class value X, for each class X
         int[] labelNums = new int[data.numClasses()];
         for (int i = 0; i < labelNums.length; i++) {
             labelNums[i] = 0;
         }
+
         for (int i = 0; i < data.numInstances(); i++) {
-            labelNums[data.instance(i).classIndex()]++;
+            labelNums[(int) data.instance(i).classValue()]++;
         }
         
         // Check whether all examples have the same class
-        // If yes, then return the class index
-        // Otherwise, return index -1
+        // If yes, then return the class value
+        // Otherwise, return -1
         for (int i = 0; i < labelNums.length; i++) {
             if (labelNums[i] == data.numInstances()) {
                 return i;
@@ -71,8 +68,11 @@ public class MyID3 extends Classifier {
     public Attribute bestAttribute (Instances data) {
         double[] informationGain = calculateInformationGain(data);
         int bestAttributeIndex = -1;
+        System.out.println("information gains: ");
+        //for (int i = 0; i < informationG)
         double highestInformationGain = 0;
         for (int i = 0; i < informationGain.length; i++) {
+            System.out.println(informationGain[i]);
             if (informationGain[i] >= highestInformationGain) {
                 bestAttributeIndex = i;
                 highestInformationGain = informationGain[i];
@@ -81,21 +81,21 @@ public class MyID3 extends Classifier {
         return data.attribute(bestAttributeIndex);
     }
     
-    public double computeProbability (Instances data, int classIndex) {
+    public double computeProbability (Instances data, int classValue) {
         int numInstancesWithCorrespondingClass = 0;
         for (int i = 0; i < data.numInstances(); i++) {
-            if (data.instance(i).classIndex() == classIndex) {
+            if (data.instance(i).classValue()== classValue) {
                 numInstancesWithCorrespondingClass++;
             }
         }
         return (double) numInstancesWithCorrespondingClass / data.numInstances();
     }
     
-    public double computeProbability (Instances data, int classIndex, Attribute att, int attributeValueIndex) {
+    public double computeProbability (Instances data, int classValue, Attribute att, int attributeValueIndex) {
         Instances[] splitData = splitData(data, att);
         int numInstancesWithCorrespondingClass = 0;
         for (int i = 0; i < splitData[attributeValueIndex].numInstances(); i++) {
-            if (splitData[attributeValueIndex].instance(i).classIndex() == classIndex) {
+            if (splitData[attributeValueIndex].instance(i).classValue() == classValue) {
                 numInstancesWithCorrespondingClass++;
             }
         }
@@ -115,7 +115,7 @@ public class MyID3 extends Classifier {
         double entropy = 0;
         for (int i = 0; i < data.numClasses(); i++) {
             double probability = computeProbability(data, i, att, attributeValueIndex);
-            entropy += -1 * probability * Utils.log2(probability);
+            entropy += -1 * probability * ((probability > 0) ? Utils.log2(probability) : 0 );
         }
         return entropy;
     }
@@ -131,12 +131,14 @@ public class MyID3 extends Classifier {
             for (int j = 0; j < splitData.length; j++) {
                 informationGain[i] -= (double) splitData[j].numInstances() / data.numInstances() * computeEntropy(data, data.attribute(i), j);
             }
+
             
         }
         return informationGain;
     }
     
     public void makeTree (Instances data) {
+        //System.out.println("make Tree with this data " + data);
         // If number of predicting attributes is empty, then Return the single node tree Root,
         // with label = most common value of the target attribute in the examples.
         if (data.numAttributes() == 0) {
@@ -151,30 +153,35 @@ public class MyID3 extends Classifier {
             Utils.normalize(m_Distribution);
             m_ClassValue = Utils.maxIndex(m_Distribution);
             m_ClassAttribute = data.classAttribute();
+            System.out.println("[1] numAttributes = 0: ");
             return;
         }
                 
-        // Else if all examples are classIndex, Return the single-node tree Root, with label = classIndex.
-        int classIndex = allExamplesClassIndex(data);
-        if (classIndex > -1) {
-            /*m_Attribute = null;
+        // Else if all examples' classes are classValue, Return the single-node tree Root, with label = classValue.
+        int classValue = allExamplesClassValue(data);
+        if (classValue > -1) {
+            System.out.println("[2] all examples are classValue");
+            m_Attribute = null;
             m_Distribution = new double[data.numClasses()];
             
             for (int i = 0; i < data.numInstances(); i++) {
                 m_Distribution[(int) data.instance(i).classValue()]++;
             }
             
-            Utils.normalize(m_Distribution);*/
-            m_ClassValue = classIndex;
+            Utils.normalize(m_Distribution);
+            m_ClassValue = Utils.maxIndex(m_Distribution);
             m_ClassAttribute = data.classAttribute();
+            //System.out.println("[2] all examples are classValue: " + this);
             return;
         }
         
         // Otherwise
+        System.out.println("[?] otherwise");
         m_Attribute = bestAttribute(data);
         Instances[] splitData = splitData(data, m_Attribute);
-        for (int i = 0; i > splitData.length; i++) {
+        for (int i = 0; i < splitData.length; i++) {
             if (splitData[i].numInstances() == 0) {
+                System.out.println("[3] instance habis");
                 // Below this new branch add a leaf node with label = most common target value in the examples
                 m_Attribute = null;
                 m_Distribution = new double[data.numClasses()];
@@ -186,10 +193,12 @@ public class MyID3 extends Classifier {
                 Utils.normalize(m_Distribution);
                 m_ClassValue = Utils.maxIndex(m_Distribution);
                 m_ClassAttribute = data.classAttribute();
+                //System.out.println("[3] numInstances = 0: " + this);
                 return;
                 
             } else {
                 // create successors
+                System.out.println("[4] create successors: ");
                 m_Successors = new MyID3[m_Attribute.numValues()];
                 for (int j = 0; j < m_Attribute.numValues(); j++) {
                     m_Successors[j] = new MyID3();
@@ -198,25 +207,6 @@ public class MyID3 extends Classifier {
             }
         }
             
-        /*
-        ID3 (Examples, Target_Attribute, Attributes)
-        Create a root node for the tree
-        If all examples are positive, Return the single-node tree Root, with label = +.
-        If all examples are negative, Return the single-node tree Root, with label = -.
-        If number of predicting attributes is empty, then Return the single node tree Root,
-        with label = most common value of the target attribute in the examples.
-        Otherwise Begin
-            A ← The Attribute that best classifies examples.
-            Decision Tree attribute for Root = A.
-            For each possible value, vi, of A,
-                Add a new tree branch below Root, corresponding to the test A = vi.
-                Let Examples(vi) be the subset of examples that have the value vi for A
-                If Examples(vi) is empty
-                    Then below this new branch add a leaf node with label = most common target value in the examples
-                Else below this new branch add the subtree ID3 (Examples(vi), Target_Attribute, Attributes – {A})
-        End
-        Return Root
-        */
     }
     
     private Instances[] splitData (Instances data, Attribute att) {
@@ -242,12 +232,13 @@ public class MyID3 extends Classifier {
     }
     
     public void testMissingValue (Instances data) throws Exception{
+
         boolean satisfy = true;
         int i = 0;
         while (i < data.numInstances() && satisfy) {
             int j = 0;
             while (j < data.numAttributes() && satisfy) {
-                satisfy = data.instance(i).attribute(j) == null; //TODO find a better way to express null
+                satisfy = !data.instance(i).hasMissingValue();
                 j++;
             }
             i++;   
@@ -271,6 +262,35 @@ public class MyID3 extends Classifier {
         if (!satisfy) {
             throw new Exception("My Id3: no numerical attribute, " + "please.");
         }
+    }
+    
+    public String toString() {
+        if ((m_Distribution == null) && (m_Successors == null)) {
+            return "My ID3: No model built yet.";
+        }
+        return "My ID3\n\n" + toString(0);
+    }
+    
+    private String toString(int level) {
+        StringBuffer text = new StringBuffer();
+
+        if (m_Attribute == null) {
+            if (Instance.isMissingValue(m_ClassValue)) {
+              text.append(": null");
+            } else {
+              text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
+            } 
+        } else {
+            for (int j = 0; j < m_Attribute.numValues(); j++) {
+                text.append("\n");
+                for (int i = 0; i < level; i++) {
+                    text.append("|  ");
+                }
+                text.append(m_Attribute.name() + " = " + m_Attribute.value(j));
+                text.append(m_Successors[j].toString(level + 1));
+            }
+        }
+        return text.toString();
     }
     
 }
