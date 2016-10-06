@@ -25,6 +25,7 @@ public class C45Tree {
     private double m_ClassValue; // Class value if node is leaf.
     private double[] m_Distribution; // Class distribution if node is leaf.
     private Attribute m_ClassAttribute; // Class attribute of dataset.
+    private double m_splitPoint; // Split point if m_Attribute is numeric
     
     public C45Tree () {
         // do nothing
@@ -84,7 +85,14 @@ public class C45Tree {
                 simplifiedInstance.deleteAttributeAt(usedAttributes.get(i).index());
             }
             usedAttributes.add(m_Attribute);
-            return m_Successors[(int) simplifiedInstance.value(m_Attribute)].recursiveClassifyInstance(instance, usedAttributes);
+            if (m_Attribute.isNumeric()) {
+                if (simplifiedInstance.value(m_Attribute) <= m_splitPoint)
+                   return m_Successors[0].recursiveClassifyInstance(instance, usedAttributes);
+                else
+                    return m_Successors[1].recursiveClassifyInstance(instance, usedAttributes);
+            } else {
+                return m_Successors[(int) simplifiedInstance.value(m_Attribute)].recursiveClassifyInstance(instance, usedAttributes);
+            }
         }
     }
 
@@ -184,6 +192,7 @@ public class C45Tree {
         
         // Otherwise
         m_Attribute = bestAttribute(data);
+        m_splitPoint = calculateSplitPoint(data, m_Attribute);
         Instances[] splitData = splitData(data, m_Attribute);
         for (int i = 0; i < splitData.length; i++) {
             if (splitData[i].numInstances() == 0) {
@@ -201,8 +210,14 @@ public class C45Tree {
                 return;
             } else {
                 // create successors
-                m_Successors = new C45Tree[m_Attribute.numValues()];
-                for (int j = 0; j < m_Attribute.numValues(); j++) {
+                int numSuccessors;
+                if (m_Attribute.isNumeric())
+                    numSuccessors = 2;
+                else
+                    numSuccessors = m_Attribute.numValues();
+                m_Successors = new C45Tree[numSuccessors];
+                
+                for (int j = 0; j < numSuccessors; j++) {
                     m_Successors[j] = new C45Tree();
                     Instances newData = new Instances (splitData[j]);
                     for (int k = 0; k < newData.numAttributes(); k++) {
@@ -220,26 +235,21 @@ public class C45Tree {
         Instances[] splitData;
     
         if (att.isNumeric()) {
-            splitData = new Instances[2];
-            Instances localData = data;
-            localData.sort(att);
-            int idxSplit = -1;
-            double currentGain = -1, gain = -1;
+            double splitPoint = calculateSplitPoint (data, att);
             
-            for (int i = 0; i < localData.numInstances()-1; i++) {
-                if (localData.instance(i).classValue() != localData.instance(i+1).classValue()) {
-                    Instances group1 = new Instances(localData, 0, i+1);
-                    Instances group2 = new Instances(localData, i+1, localData.numInstances()-i-1);
-                    currentGain = computeEntropy(localData) - computeEntropy(group1) - computeEntropy(group2);
-                }
-                if (currentGain > gain) {
-                    gain = currentGain;
-                    idxSplit = i;
+            splitData = new Instances[2];
+            splitData[0] = new Instances(data);
+            splitData[1] = new Instances(data);
+            splitData[0].delete();
+            splitData[1].delete();
+        
+            for (int i = 0; i < data.numInstances()-1; i++) {
+                if (data.instance(i).classValue() <= splitPoint) {
+                    splitData[0].add(data.instance(i));
+                } else {
+                    splitData[1].add(data.instance(i));
                 }
             }
-            
-            splitData[0] = new Instances(localData, 0, idxSplit+1);
-            splitData[1] = new Instances(localData, idxSplit+1, localData.numInstances()-idxSplit-1);
         } else {
             splitData = new Instances[att.numValues()];
             for (int j = 0; j < att.numValues(); j++) {
@@ -256,5 +266,26 @@ public class C45Tree {
         }
         
         return splitData;
+    }
+
+    private double calculateSplitPoint (Instances data, Attribute att) {
+        Instances localData = data;
+        localData.sort(att);
+        int idxSplit = -1;
+        double currentGain = -1, gain = -1;
+
+        for (int i = 0; i < localData.numInstances()-1; i++) {
+            if (localData.instance(i).classValue() != localData.instance(i+1).classValue()) {
+                Instances group1 = new Instances(localData, 0, i+1);
+                Instances group2 = new Instances(localData, i+1, localData.numInstances()-i-1);
+                currentGain = computeEntropy(localData) - computeEntropy(group1) - computeEntropy(group2);
+            }
+            if (currentGain > gain) {
+                gain = currentGain;
+                idxSplit = i;
+            }
+        }
+        
+        return Double.parseDouble(localData.instance(idxSplit).stringValue(att));
     }
 }
