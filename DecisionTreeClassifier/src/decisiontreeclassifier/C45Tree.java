@@ -67,30 +67,19 @@ public class C45Tree {
     }
     
     public double classifyInstance (Instance instance) {
-        ArrayList<Attribute> usedAttributes = new ArrayList<Attribute>();
-        return recursiveClassifyInstance (instance, usedAttributes);
-    }
-    
-    public double recursiveClassifyInstance (Instance instance, ArrayList<Attribute> usedAttributes) {
         if (instance.hasMissingValue()) {
             
         }
-        
         if (m_Attribute == null) {
             return m_ClassValue;
         } else {
-            Instance simplifiedInstance = new Instance(instance);
-            for (int i = usedAttributes.size()-1; i >= 0; i--) {
-                simplifiedInstance.deleteAttributeAt(usedAttributes.get(i).index());
-            }
-            usedAttributes.add(m_Attribute);
             if (m_Attribute.isNumeric()) {
-                if (simplifiedInstance.value(m_Attribute) <= m_splitPoint)
-                   return m_Successors[0].recursiveClassifyInstance(instance, usedAttributes);
+                if (instance.value(m_Attribute) <= m_splitPoint)
+                   return m_Successors[0].classifyInstance(instance);
                 else
-                    return m_Successors[1].recursiveClassifyInstance(instance, usedAttributes);
+                    return m_Successors[1].classifyInstance(instance);
             } else {
-                return m_Successors[(int) simplifiedInstance.value(m_Attribute)].recursiveClassifyInstance(instance, usedAttributes);
+                return m_Successors[(int) instance.value(m_Attribute)].classifyInstance(instance);
             }
         }
     }
@@ -191,8 +180,15 @@ public class C45Tree {
         
         // Otherwise
         m_Attribute = bestAttribute(data);
-        m_splitPoint = calculateSplitPoint(data, m_Attribute);
         Instances[] splitData = splitData(data, m_Attribute);
+        if (m_Attribute.isNumeric()) {
+            double max = -1;
+            for (int i = 0; i < splitData[0].numInstances(); i++) {
+                if (splitData[0].instance(i).value(m_Attribute) > max)
+                    max = splitData[0].instance(i).value(m_Attribute);
+            }
+            m_splitPoint = max;
+        }
         for (int i = 0; i < splitData.length; i++) {
             if (splitData[i].numInstances() == 0) {
                 // Below this new branch add a leaf node with label = most common target value in the examples
@@ -219,35 +215,38 @@ public class C45Tree {
                 for (int j = 0; j < numSuccessors; j++) {
                     m_Successors[j] = new C45Tree();
                     Instances newData = new Instances (splitData[j]);
-                    for (int k = 0; k < newData.numAttributes(); k++) {
-                        if (newData.attribute(k).equals(m_Attribute)) {
-                            newData.deleteAttributeAt(k);
-                        }
-                    }
+//                    for (int k = 0; k < newData.numAttributes(); k++) {
+//                        if (newData.attribute(k).equals(m_Attribute)) {
+//                            newData.deleteAttributeAt(k);
+//                        }
+//                    }
                     m_Successors[j].makeTree(newData);
                 }
             }
         }
     }
     
-    private Instances[] splitData (Instances data, Attribute att) {
+    public Instances[] splitData (Instances data, Attribute att) {
         Instances[] splitData;
     
         if (att.isNumeric()) {
             double splitPoint = calculateSplitPoint (data, att);
             
             splitData = new Instances[2];
-            splitData[0] = new Instances(data);
-            splitData[1] = new Instances(data);
-            splitData[0].delete();
-            splitData[1].delete();
-        
-            for (int i = 0; i < data.numInstances()-1; i++) {
-                if (data.instance(i).classValue() <= splitPoint) {
+            for (int j = 0; j < 2; j++) {
+                splitData[j] = new Instances(data, data.numInstances());
+            }
+
+            for (int i = 0; i < data.numInstances(); i++) {
+                if (data.instance(i).value(att) <= splitPoint) {
                     splitData[0].add(data.instance(i));
                 } else {
                     splitData[1].add(data.instance(i));
                 }
+            }
+
+            for (int i = 0; i < splitData.length; i++) {
+              splitData[i].compactify();
             }
         } else {
             splitData = new Instances[att.numValues()];
@@ -278,14 +277,13 @@ public class C45Tree {
                 Instances group1 = new Instances(localData, 0, i+1);
                 Instances group2 = new Instances(localData, i+1, localData.numInstances()-i-1);
                 currentGain = computeEntropy(localData) - computeEntropy(group1) - computeEntropy(group2);
-            }
-            if (currentGain > gain) {
-                gain = currentGain;
-                idxSplit = i;
+                if (currentGain > gain) {
+                    gain = currentGain;
+                    idxSplit = i;
+                }
             }
         }
-        
-        return Double.parseDouble(localData.instance(idxSplit).stringValue(att));
+        return (localData.instance(idxSplit).value(att));
     }
 
     public void prune (Instances data) {
@@ -352,5 +350,34 @@ public class C45Tree {
         }
         
         return (data.numInstances() - max)/data.numInstances();
+    }
+
+    public String toString() {
+        if ((m_Distribution == null) && (m_Successors == null)) {
+            return "My C45: No model built yet.";
+        }
+        return "My C45\n\n" + toString(0);
+    }
+    
+    private String toString(int level) {
+        StringBuffer text = new StringBuffer();
+
+        if (m_Attribute == null) {
+            if (Instance.isMissingValue(m_ClassValue)) {
+                text.append(": null");
+            } else {
+                text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
+            } 
+        } else {
+            for (int j = 0; j < m_Attribute.numValues(); j++) {
+                text.append("\n");
+                for (int i = 0; i < level; i++) {
+                    text.append("|  ");
+                }
+                text.append(m_Attribute.name() + " = " + m_Attribute.value(j));
+                text.append(m_Successors[j].toString(level + 1));
+            }
+        }
+        return text.toString();
     }
 }

@@ -42,7 +42,6 @@ public class MyID3 extends Classifier {
         data.deleteWithMissingClass();
         
         makeTree(data);
-        
     }
     
     public int allExamplesClassValue (Instances data) {
@@ -81,8 +80,6 @@ public class MyID3 extends Classifier {
         return data.attribute(bestAttributeIndex);
     }
     
-
-    
     @Override
     public double classifyInstance (Instance instance) throws Exception {
         ArrayList<Attribute> usedAttributes = new ArrayList<Attribute>();
@@ -97,6 +94,9 @@ public class MyID3 extends Classifier {
         if (m_Attribute == null) {
             return m_ClassValue;
         } else {
+                System.out.println(m_Attribute);
+                System.out.println(instance);
+                System.out.println(m_Attribute.index() + " " + instance.value(m_Attribute));
             Instance simplifiedInstance = new Instance(instance);
             for (int i = usedAttributes.size()-1; i >= 0; i--) {
                 simplifiedInstance.deleteAttributeAt(usedAttributes.get(i).index());
@@ -225,13 +225,7 @@ public class MyID3 extends Classifier {
                 m_Successors = new MyID3[m_Attribute.numValues()];
                 for (int j = 0; j < m_Attribute.numValues(); j++) {
                     m_Successors[j] = new MyID3();
-                    Instances newData = new Instances (splitData[j]);
-                    for (int k = 0; k < newData.numAttributes(); k++) {
-                        if (newData.attribute(k).equals(m_Attribute)) {
-                            newData.deleteAttributeAt(k);
-                        }
-                    }
-                   
+                    Instances newData = new Instances (splitData[j]);                   
                     m_Successors[j].makeTree(newData);
                 }
             }

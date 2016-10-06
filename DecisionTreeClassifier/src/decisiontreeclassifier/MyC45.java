@@ -6,6 +6,7 @@
 package decisiontreeclassifier;
 
 import weka.classifiers.Classifier;
+import weka.core.Attribute;
 import weka.core.Instance;
 import weka.core.Instances;
 
@@ -23,13 +24,18 @@ public class MyC45 extends Classifier {
     
     @Override
     public void buildClassifier(Instances data) {
+        Attribute att = data.attribute(3);
         root = new C45Tree();
         root.makeTree(data);
-        root.prune(data);
+//        root.prune(data);
     }
     
     public double classifyInstance (Instance instance) {
         return root.classifyInstance(instance);
+    }
+    
+    public String toString() {
+        return root.toString();
     }
 
 }
