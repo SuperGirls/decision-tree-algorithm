@@ -99,8 +99,8 @@ public class MyWeka {
     public void buildClassifierID3() throws Exception{
         classifier = new Id3();
         classifier.buildClassifier(train);
-        System.out.println("This is the ID3 classifier");
-        System.out.println(classifier);
+        //System.out.println("This is the ID3 classifier");
+        //System.out.println(classifier);
     }
     
     public void buildClassifierJ48(String confidence) throws Exception {
@@ -124,8 +124,8 @@ public class MyWeka {
     public void buildClassifierMyID3() throws Exception{
         classifier = new MyID3();
         classifier.buildClassifier(train);
-        System.out.println("This is the My ID3 classifier");
-        System.out.println(classifier);
+        //System.out.println("This is the My ID3 classifier");
+        //System.out.println(classifier);
     }
     
     public void evaluateModel() throws Exception{
@@ -351,16 +351,16 @@ public class MyWeka {
             buildClassifierMyID3();
         }
         
-        /*if(optTest == 2){
+        if(optTest == 2){
             crossValidate(folds);
         } else {
             evaluateModel();
-        }  */
+        }  
         
         //Print Result
-        /*System.out.println(eval.toSummaryString("\nSummary\n======\n", false));   
+        System.out.println(eval.toSummaryString("\nSummary\n======\n", false));   
         System.out.println(eval.toClassDetailsString("\nStatistic\n======\n"));
-        System.out.println(eval.toMatrixString("\nConfusion Matrix\n======\n"));*/
+        System.out.println(eval.toMatrixString("\nConfusion Matrix\n======\n"));
         
     }
     

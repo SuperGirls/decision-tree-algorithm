@@ -5,6 +5,7 @@
  */
 package decisiontreeclassifier;
 
+import java.util.ArrayList;
 import weka.classifiers.Classifier;
 import weka.core.Attribute;
 import weka.core.Instance;
@@ -80,6 +81,31 @@ public class MyID3 extends Classifier {
         return data.attribute(bestAttributeIndex);
     }
     
+
+    
+    @Override
+    public double classifyInstance (Instance instance) throws Exception {
+        ArrayList<Attribute> usedAttributes = new ArrayList<Attribute>();
+        return recursiveClassifyInstance (instance, usedAttributes);
+    }
+    
+    public double recursiveClassifyInstance (Instance instance, ArrayList<Attribute> usedAttributes) throws Exception {
+        if (instance.hasMissingValue()) {
+            throw new Exception("My Id3: no missing values, " + "please.");
+        }
+        
+        if (m_Attribute == null) {
+            return m_ClassValue;
+        } else {
+            Instance simplifiedInstance = new Instance(instance);
+            for (int i = usedAttributes.size()-1; i >= 0; i--) {
+                simplifiedInstance.deleteAttributeAt(usedAttributes.get(i).index());
+            }
+            usedAttributes.add(m_Attribute);
+            return m_Successors[(int) simplifiedInstance.value(m_Attribute)].recursiveClassifyInstance(instance, usedAttributes);
+        }
+    }
+
     public double computeProbability (Instances data, int classValue) {
         int numInstancesWithCorrespondingClass = 0;
         for (int i = 0; i < data.numInstances(); i++) {
