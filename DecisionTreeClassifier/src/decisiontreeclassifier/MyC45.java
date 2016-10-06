@@ -28,6 +28,7 @@ public class MyC45 extends Classifier {
         root = new C45Tree();
         root.makeTree(data);
 //        root.prune(data);
+        System.out.println(root);
     }
     
     public double classifyInstance (Instance instance) {

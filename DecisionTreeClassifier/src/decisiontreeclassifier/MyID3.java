@@ -42,6 +42,7 @@ public class MyID3 extends Classifier {
         data.deleteWithMissingClass();
         
         makeTree(data);
+        System.out.println(this);
     }
     
     public int allExamplesClassValue (Instances data) {
@@ -94,9 +95,6 @@ public class MyID3 extends Classifier {
         if (m_Attribute == null) {
             return m_ClassValue;
         } else {
-                System.out.println(m_Attribute);
-                System.out.println(instance);
-                System.out.println(m_Attribute.index() + " " + instance.value(m_Attribute));
             Instance simplifiedInstance = new Instance(instance);
             for (int i = usedAttributes.size()-1; i >= 0; i--) {
                 simplifiedInstance.deleteAttributeAt(usedAttributes.get(i).index());

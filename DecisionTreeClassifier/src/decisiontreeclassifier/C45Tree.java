@@ -5,7 +5,6 @@
  */
 package decisiontreeclassifier;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import weka.core.Attribute;
@@ -294,6 +293,8 @@ public class C45Tree {
                 m_Successors[i].prune(splitData[i]);
             }
             
+            System.out.println("Pruning in node " + m_Attribute.name());
+            
             // Calculate error in this subtree
             double errorBefore = errorBeforePruning(data);
             
@@ -332,21 +333,21 @@ public class C45Tree {
     }
     
     public double errorAfterPruning(Instances data) {
+        System.out.println(data.numInstances() + " instance in this subtree");
+        
         // Count error
-        Map<Double,Integer> classes = new HashMap<>();
-        for (int i = 0; i < data.numInstances(); i++) {
-            if(!classes.containsKey(data.instance(i).classValue())) {
-                classes.put(data.instance(i).classValue(),1);
-            }
-            else {
-                int temp = classes.get(data.instance(i).classValue()) + 1;
-                classes.put(data.instance(i).classValue(),temp);
-            }
+        int[] classes = new int[data.numClasses()];
+        for (int i = 0; i < classes.length; i++) {
+            classes[i] = 0;
         }
+        for (int i = 0; i < data.numInstances(); i++) {
+            classes[(int) data.instance(i).classValue()]++;
+        }
+        System.out.println(classes.length);
         int max = 0;
-        for (int i = 0; i < classes.size(); i++) {
-            if (classes.get(i) > max)
-                max = classes.get(i);
+        for (int i = 0; i < classes.length; i++) {
+            if (classes[i] > max)
+                max = classes[i];
         }
         
         return (data.numInstances() - max)/data.numInstances();
@@ -369,13 +370,28 @@ public class C45Tree {
                 text.append(": " + m_ClassAttribute.value((int) m_ClassValue));
             } 
         } else {
-            for (int j = 0; j < m_Attribute.numValues(); j++) {
-                text.append("\n");
-                for (int i = 0; i < level; i++) {
-                    text.append("|  ");
+            if (m_Attribute.isNumeric()) {
+                for (int j = 0; j < 2; j++) {
+                    text.append("\n");
+                    for (int i = 0; i < level; i++) {
+                        text.append("|  ");
+                    }
+                    if (j == 0)
+                        text.append(m_Attribute.name() + " <= " + m_splitPoint);
+                    else
+                        text.append(m_Attribute.name() + " > " + m_splitPoint);
+                    text.append(m_Successors[j].toString(level + 1));
                 }
-                text.append(m_Attribute.name() + " = " + m_Attribute.value(j));
-                text.append(m_Successors[j].toString(level + 1));
+            }
+            else {
+                for (int j = 0; j < m_Attribute.numValues(); j++) {
+                    text.append("\n");
+                    for (int i = 0; i < level; i++) {
+                        text.append("|  ");
+                    }
+                    text.append(m_Attribute.name() + " = " + m_Attribute.value(j));
+                    text.append(m_Successors[j].toString(level + 1));
+                }
             }
         }
         return text.toString();
