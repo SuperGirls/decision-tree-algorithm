@@ -5,6 +5,7 @@
  */
 package decisiontreeclassifier;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import weka.core.Attribute;
@@ -16,7 +17,7 @@ import weka.core.Utils;
  *
  * @author TOSHIBA PC
  */
-public class C45Tree {
+public class C45Tree implements Serializable {
     
     private C45Tree[] m_Successors; // The node's successors.
     private Attribute m_Attribute; // Attribute used for splitting.
@@ -66,9 +67,6 @@ public class C45Tree {
     }
     
     public double classifyInstance (Instance instance) {
-        if (instance.hasMissingValue()) {
-            
-        }
         if (m_Attribute == null) {
             return m_ClassValue;
         } else {
@@ -94,7 +92,11 @@ public class C45Tree {
     }
     
     public double computeProbability (Instances data, int classValue, Attribute att, int attributeValueIndex) {
-        Instances[] splitData = splitData(data, att);
+        Instances[] splitData;
+        if (att.isNumeric())
+            splitData = splitData(data, att, calculateSplitPoint(data,att));
+        else
+            splitData = splitData(data, att);
         if (splitData[attributeValueIndex].numInstances() == 0) {
             return 0;
         }
@@ -134,7 +136,14 @@ public class C45Tree {
         double[] informationGain = new double[data.numAttributes()];
         for (int i = 0; i < data.numAttributes(); i++) {
             informationGain[i] = entropy;
-            Instances[] splitData = splitData(data, data.attribute(i));
+            Instances[] splitData;
+            
+            if (data.attribute(i).isNumeric()) {
+                double splitPoint = calculateSplitPoint(data, data.attribute(i));
+                splitData = splitData(data, data.attribute(i), splitPoint);
+            } else {
+                splitData = splitData(data, data.attribute(i));
+            }
             
             for (int j = 0; j < splitData.length; j++) {
                 informationGain[i] -= (double) splitData[j].numInstances() / data.numInstances() * computeEntropy(data, data.attribute(i), j);
@@ -146,8 +155,8 @@ public class C45Tree {
     public void makeTree (Instances data) {
         // If number of predicting attributes is empty, then Return the single node tree Root,
         // with label = most common value of the target attribute in the examples.
-        if (data.numAttributes() <= 1) {
-            // TODO: return the single node tree Root
+        if (data.numInstances() < 2) {
+            // return the single node tree Root
             m_Attribute = null;
             m_Distribution = new double[data.numClasses()];
             
@@ -179,14 +188,12 @@ public class C45Tree {
         
         // Otherwise
         m_Attribute = bestAttribute(data);
-        Instances[] splitData = splitData(data, m_Attribute);
+        Instances[] splitData;
         if (m_Attribute.isNumeric()) {
-            double max = -1;
-            for (int i = 0; i < splitData[0].numInstances(); i++) {
-                if (splitData[0].instance(i).value(m_Attribute) > max)
-                    max = splitData[0].instance(i).value(m_Attribute);
-            }
-            m_splitPoint = max;
+            m_splitPoint = calculateSplitPoint(data, m_Attribute);
+            splitData = splitData(data, m_Attribute, m_splitPoint);
+        } else {
+            splitData = splitData(data, m_Attribute);
         }
         for (int i = 0; i < splitData.length; i++) {
             if (splitData[i].numInstances() == 0) {
@@ -214,11 +221,6 @@ public class C45Tree {
                 for (int j = 0; j < numSuccessors; j++) {
                     m_Successors[j] = new C45Tree();
                     Instances newData = new Instances (splitData[j]);
-//                    for (int k = 0; k < newData.numAttributes(); k++) {
-//                        if (newData.attribute(k).equals(m_Attribute)) {
-//                            newData.deleteAttributeAt(k);
-//                        }
-//                    }
                     m_Successors[j].makeTree(newData);
                 }
             }
@@ -226,40 +228,40 @@ public class C45Tree {
     }
     
     public Instances[] splitData (Instances data, Attribute att) {
+        Instances[] splitData = new Instances[att.numValues()];
+        for (int j = 0; j < att.numValues(); j++) {
+            splitData[j] = new Instances(data, data.numInstances());
+        }
+
+        for (int i = 0; i < data.numInstances(); i++) {
+            splitData[(int) data.instance(i).value(att)].add(data.instance(i));
+        }
+
+        for (int i = 0; i < splitData.length; i++) {
+          splitData[i].compactify();
+        }
+        
+        return splitData;
+    }
+
+    public Instances[] splitData (Instances data, Attribute att, double splitPoint) {
         Instances[] splitData;
     
-        if (att.isNumeric()) {
-            double splitPoint = calculateSplitPoint (data, att);
-            
-            splitData = new Instances[2];
-            for (int j = 0; j < 2; j++) {
-                splitData[j] = new Instances(data, data.numInstances());
-            }
+        splitData = new Instances[2];
+        for (int j = 0; j < 2; j++) {
+            splitData[j] = new Instances(data, data.numInstances());
+        }
 
-            for (int i = 0; i < data.numInstances(); i++) {
-                if (data.instance(i).value(att) <= splitPoint) {
-                    splitData[0].add(data.instance(i));
-                } else {
-                    splitData[1].add(data.instance(i));
-                }
+        for (int i = 0; i < data.numInstances(); i++) {
+            if (data.instance(i).value(att) <= splitPoint) {
+                splitData[0].add(data.instance(i));
+            } else {
+                splitData[1].add(data.instance(i));
             }
+        }
 
-            for (int i = 0; i < splitData.length; i++) {
-              splitData[i].compactify();
-            }
-        } else {
-            splitData = new Instances[att.numValues()];
-            for (int j = 0; j < att.numValues(); j++) {
-                splitData[j] = new Instances(data, data.numInstances());
-            }
-
-            for (int i = 0; i < data.numInstances(); i++) {
-                splitData[(int) data.instance(i).value(att)].add(data.instance(i));
-            }
-
-            for (int i = 0; i < splitData.length; i++) {
-              splitData[i].compactify();
-            }
+        for (int i = 0; i < splitData.length; i++) {
+          splitData[i].compactify();
         }
         
         return splitData;
@@ -268,18 +270,20 @@ public class C45Tree {
     public double calculateSplitPoint (Instances data, Attribute att) {
         Instances localData = data;
         localData.sort(att);
+        
         int idxSplit = -1;
         double currentGain = -1, gain = -1;
-
         for (int i = 0; i < localData.numInstances()-1; i++) {
-            if (localData.instance(i).classValue() != localData.instance(i+1).classValue()) {
-                Instances group1 = new Instances(localData, 0, i+1);
-                Instances group2 = new Instances(localData, i+1, localData.numInstances()-i-1);
-                currentGain = computeEntropy(localData) - computeEntropy(group1) - computeEntropy(group2);
-                if (currentGain > gain) {
-                    gain = currentGain;
-                    idxSplit = i;
-                }
+            Instances group1 = new Instances(localData, 0, i+1);
+            Instances group2 = new Instances(localData, i+1, localData.numInstances()-i-1);
+
+            currentGain = computeEntropy(localData);
+            currentGain -= (double) group1.numInstances() / localData.numInstances() * computeEntropy(group1);
+            currentGain -= (double) group2.numInstances() / localData.numInstances() * computeEntropy(group2);
+
+            if (currentGain > gain) {
+                gain = currentGain;
+                idxSplit = i;
             }
         }
         return (localData.instance(idxSplit).value(att));
@@ -288,12 +292,14 @@ public class C45Tree {
     public void prune (Instances data) {
         if (m_Attribute != null) {
             // Prune all subtree
-            Instances[] splitData = splitData(data, m_Attribute);
+            Instances[] splitData;
+            if (m_Attribute.isNumeric())
+                splitData = splitData(data, m_Attribute, m_splitPoint);
+            else
+                splitData = splitData(data, m_Attribute);
             for (int i=0; i<m_Successors.length; i++) {
                 m_Successors[i].prune(splitData[i]);
             }
-            
-            System.out.println("Pruning in node " + m_Attribute.name());
             
             // Calculate error in this subtree
             double errorBefore = errorBeforePruning(data);
@@ -319,21 +325,21 @@ public class C45Tree {
     }
     
     public double errorBeforePruning(Instances data) {
-        int error = 0;
+        if (data.numInstances() == 0) return 0;
         
         // Count error
+        int error = 0;
         for (int i=0; i<data.numInstances(); i++) {
             double classResult = classifyInstance(data.instance(i));
             if (data.instance(i).classValue() != classResult) {
                 error++;
             }
         }
-        
         return error/data.numInstances();
     }
     
     public double errorAfterPruning(Instances data) {
-        System.out.println(data.numInstances() + " instance in this subtree");
+        if (data.numInstances() == 0) return 0;
         
         // Count error
         int[] classes = new int[data.numClasses()];
@@ -343,7 +349,7 @@ public class C45Tree {
         for (int i = 0; i < data.numInstances(); i++) {
             classes[(int) data.instance(i).classValue()]++;
         }
-        System.out.println(classes.length);
+        
         int max = 0;
         for (int i = 0; i < classes.length; i++) {
             if (classes[i] > max)

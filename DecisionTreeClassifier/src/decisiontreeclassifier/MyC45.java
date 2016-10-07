@@ -24,10 +24,21 @@ public class MyC45 extends Classifier {
     
     @Override
     public void buildClassifier(Instances data) {
-        Attribute att = data.attribute(3);
+        // Split Data
+        Instances train = new Instances(data, data.numInstances());
+        Instances test = new Instances(data, data.numInstances());
+        for(int i=0; i<data.numInstances(); i++) {
+            if (i % 4 == 0)
+                test.add(data.instance(i));
+            else
+                train.add(data.instance(i));
+        }
+        test.compactify();
+        train.compactify();
+        
         root = new C45Tree();
         root.makeTree(data);
-//        root.prune(data);
+        root.prune(data);
         System.out.println(root);
     }
     

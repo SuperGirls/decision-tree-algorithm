@@ -38,7 +38,7 @@ public class MyWeka {
     private Evaluation eval;
     
     
-    private int optCls = 1;
+    private int optCls = 5;
     private int optTest = 1;
     private int folds = 0;
     private double percent;
